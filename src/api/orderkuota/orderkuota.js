@@ -113,20 +113,21 @@ async function createQRIS(amount, codeqr) {
     }
 }
 
-async function checkQRISStatus() {
+async function checkQRISStatus(merchant, apiKey) {
     try {
-        const apiUrl = `https://gateway.okeconnect.com/api/mutasi/qris/isi pakai merchant orkut/apikey orkut`;
+        const apiUrl = `https://qiospay.id/api/mutasi/qris/${merchant}/${apiKey}`;
         const response = await axios.get(apiUrl);
         const result = response.data;
         const data = result.data;
+
         let capt = '*Q R I S - M U T A S I*\n\n';
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             capt += 'Tidak ada data mutasi.';
         } else {
             data.forEach(entry => {
-                capt += '```Tanggal:```' + ` ${entry.date}\n`;
-                capt += '```Issuer:```' + ` ${entry.brand_name}\n`;
-                capt += '```Nominal:```' + ` Rp ${entry.amount}\n\n`;
+                capt += '```Tanggal:``` ' + `${entry.date}\n`;
+                capt += '```Issuer:``` ' + `${entry.brand_name}\n`;
+                capt += '```Nominal:``` Rp ${entry.amount}\n\n`;
             });
         }
         return capt;
@@ -154,26 +155,26 @@ app.get('/orderkuota/createpayment', async (req, res) => {
     
 app.get('/orderkuota/cekstatus', async (req, res) => {
     const { merchant, keyorkut, apikey } = req.query;
-    const check = global.apikey
-    if (!global.apikey.includes(apikey)) return res.json("Apikey tidak valid.")
-        try {
-        const apiUrl = `https://gateway.okeconnect.com/api/mutasi/qris/${merchant}/${keyorkut}`;
+    if (!global.apikey.includes(apikey)) return res.json("Apikey tidak valid.");
+    
+    try {
+        const apiUrl = `https://qiospay.id/api/mutasi/qris/${merchant}/${keyorkut}`;
         const response = await axios.get(apiUrl);
-        const result = await response.data;
-                // Check if data exists and get the latest transaction
+        const result = response.data;
         const latestTransaction = result.data && result.data.length > 0 ? result.data[0] : null;
-                if (latestTransaction) {
-         res.status(200).json({
-            status: true, 
-            result: latestTransaction
-        })
+
+        if (latestTransaction) {
+            res.status(200).json({
+                status: true,
+                result: latestTransaction
+            });
         } else {
             res.json({ message: "No transactions found." });
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-})
+});
 
 app.get('/orderkuota/ceksaldo', async (req, res) => {
     const { merchant, keyorkut, apikey } = req.query;
