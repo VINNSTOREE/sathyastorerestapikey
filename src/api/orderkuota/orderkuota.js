@@ -155,13 +155,25 @@ app.get('/orderkuota/createpayment', async (req, res) => {
     
 app.get('/orderkuota/cekstatus', async (req, res) => {
     const { merchant, keyorkut, apikey } = req.query;
-    if (!global.apikey.includes(apikey)) return res.json("Apikey tidak valid.");
-    
+
+    if (!apikey || !merchant || !keyorkut) {
+        return res.status(400).json({ status: false, message: 'Parameter tidak lengkap.' });
+    }
+
+    if (!global.apikey.includes(apikey)) {
+        return res.status(401).json({ status: false, message: 'Apikey tidak valid.' });
+    }
+
     try {
         const apiUrl = `https://qiospay.id/api/mutasi/qris/${merchant}/${keyorkut}`;
         const response = await axios.get(apiUrl);
         const result = response.data;
-        const latestTransaction = result.data && result.data.length > 0 ? result.data[0] : null;
+
+        if (!result || !Array.isArray(result.data)) {
+            return res.status(500).json({ status: false, message: "Invalid response from upstream server." });
+        }
+
+        const latestTransaction = result.data.length > 0 ? result.data[0] : null;
 
         if (latestTransaction) {
             res.status(200).json({
@@ -169,10 +181,15 @@ app.get('/orderkuota/cekstatus', async (req, res) => {
                 result: latestTransaction
             });
         } else {
-            res.json({ message: "No transactions found." });
+            res.json({ status: false, message: "No transactions found." });
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error cekstatus:', error.response?.data || error.message);
+        res.status(500).json({
+            status: false,
+            message: 'Gagal mengambil status transaksi.',
+            error: error.response?.data || error.message
+        });
     }
 });
 
